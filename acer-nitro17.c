@@ -22,7 +22,7 @@ MODULE_LICENSE("GPL");
  * @return - Config to pass to SetGamingFanBehavior.
  * @author https://github.com/JafarAkhondali
  */
-static u64 get_fan_config(bool isTurbo) {
+static u64 acer_nitro17_get_fan_config(bool isTurbo) {
     u64 gpu_fan_config1 = 0, gpu_fan_config2 = 0;
     int i;
 
@@ -72,7 +72,7 @@ static ssize_t acer_nitro17_fan_device_file_write(__attribute__((unused)) struct
         return 0;
     }
 
-    u64 wmiInputs = get_fan_config(config_buf[0] == 1 || config_buf[0] == '1');
+    u64 wmiInputs = acer_nitro17_get_fan_config(config_buf[0] == 1 || config_buf[0] == '1');
     struct acpi_buffer input = {(acpi_size) sizeof(u64), (void *) (&wmiInputs)};
     struct acpi_buffer output = {ACPI_ALLOCATE_BUFFER, NULL};
     acpi_status status = wmi_evaluate_method(WMID_ACER_GUID, 0, WMI_SET_GAMING_FAN_BEHAVIOR_ID, &input, &output);
@@ -123,7 +123,7 @@ acer_nitro17_kbd_device_file_write(__attribute__((unused)) struct file *file_ptr
     // Brightness 0-100. 0 is off and 100 is max.
     if (config_buf[2] > 100) goto error;
 
-    if(config_buf[0] == 0) {
+    if (config_buf[0] == 0) {
         // Speed is 0 when in static mode.
         if (config_buf[1] != 0) goto error;
 
@@ -133,7 +133,7 @@ acer_nitro17_kbd_device_file_write(__attribute__((unused)) struct file *file_ptr
         // Speed 1-9. 1 is slowest, 9 fastest.
         if (config_buf[1] < 1 || config_buf[1] > 9) goto error;
 
-        if(config_buf[0] == 3 || config_buf[0] == 4) {
+        if (config_buf[0] == 3 || config_buf[0] == 4) {
             // Direction 1-2. 1 is left-to-right and 2 is right-to-left.
             if (config_buf[3] > 1) goto error;
         } else {
