@@ -107,17 +107,40 @@ acer_nitro17_kbd_device_file_write(__attribute__((unused)) struct file *file_ptr
         return 0;
     }
 
-    // Mode 0-7
+    /* Mode 0-7.
+     * Here are mode descriptions:
+     *     0 - Static.     Speed is 0.  Direction is 0.  Color required.
+     *     1 - Breathing.  Speed 1-9.   Direction is 1.  Color required.
+     *     2 - Neon.       Speed 1-9.   Direction is 1.  No color.
+     *     3 - Wave.       Speed 1-9.   Direction 1-2.   No color.
+     *     4 - Shifting.   Speed 1-9.   Direction 1-2.   Color required.
+     *     5 - Zoom.       Speed 1-9.   Direction is 1.  Color required.
+     *     6 - Meteor.     Speed 1-9.   Direction is 1.  Color required.
+     *     7 - Twinkling.  Speed 1-9.   Direction is 1.  Color required.
+     */
     if (config_buf[0] > 7) goto error;
 
-    // Speed 1-9
-    if (config_buf[1] < 1 || config_buf[1] > 9) goto error;
-
-    // Brightness 0-100
+    // Brightness 0-100. 0 is off and 100 is max.
     if (config_buf[2] > 100) goto error;
 
-    // Direction 0-1
-    if (config_buf[3] > 1) goto error;
+    if(config_buf[0] == 0) {
+        // Speed is 0 when in static mode.
+        if (config_buf[1] != 0) goto error;
+
+        // Direction is 0 when in static mode
+        if (config_buf[3] != 0) goto error;
+    } else {
+        // Speed 1-9. 1 is slowest, 9 fastest.
+        if (config_buf[1] < 1 || config_buf[1] > 9) goto error;
+
+        if(config_buf[0] == 3 || config_buf[0] == 4) {
+            // Direction 1-2. 1 is left-to-right and 2 is right-to-left.
+            if (config_buf[3] > 1) goto error;
+        } else {
+            // Direction should be 1.
+            if (config_buf[3] != 1) goto error;
+        }
+    }
 
     // 3 color components are 0-255 so no need to test them.
 
