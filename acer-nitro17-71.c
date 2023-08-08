@@ -20,6 +20,7 @@ MODULE_LICENSE("GPL");
  * Generates unsigned long config to pass to SetGamingFanBehavior.
  * @param fan_mode - True if turbo mode, false otherwise.
  * @return - Config to pass to SetGamingFanBehavior.
+ * @author https://github.com/JafarAkhondali
  */
 static u64 get_fan_config(bool isTurbo) {
     u64 gpu_fan_config1 = 0, gpu_fan_config2 = 0;
@@ -39,11 +40,13 @@ static u64 get_fan_config(bool isTurbo) {
 
 static int acer_nitro17_device_file_open(__attribute__((unused)) struct inode *file_ptr,
                                          __attribute__((unused)) struct file *user_buffer) {
+    try_module_get(THIS_MODULE);
     return 0;
 }
 
 static int acer_nitro17_device_file_close(__attribute__((unused)) struct inode *file_ptr,
                                           __attribute__((unused)) struct file *user_buffer) {
+    module_put(THIS_MODULE);
     return 0;
 }
 
@@ -57,7 +60,6 @@ static ssize_t acer_nitro17_fan_device_file_read(__attribute__((unused)) struct 
 static ssize_t
 acer_nitro17_fan_device_file_write(__attribute__((unused)) struct file *file_ptr, const char *user_buffer, size_t count,
                                    __attribute__((unused)) loff_t *offset) {
-    printk(KERN_INFO "%s: fan device file write!", DRIVER_NAME);
     if (count != ACER_NITRO17_FAN_CONFIG_LENGTH) {
         printk(KERN_ERR "%s: Invalid data written to fan character device!", DRIVER_NAME);
         return 0;
@@ -92,7 +94,6 @@ static ssize_t acer_nitro17_kdb_device_file_read(__attribute__((unused)) struct 
 static ssize_t
 acer_nitro17_kbd_device_file_write(__attribute__((unused)) struct file *file_ptr, const char *user_buffer, size_t count,
                                    __attribute__((unused)) loff_t *offset) {
-    printk(KERN_INFO "%s: kbd device file write!", DRIVER_NAME);
     if (count != ACER_NITRO17_KBD_CONFIG_LENGTH) {
         printk(KERN_ERR "%s: Invalid data written to keyboard character device!", DRIVER_NAME);
         return 0;
@@ -119,18 +120,18 @@ acer_nitro17_kbd_device_file_write(__attribute__((unused)) struct file *file_ptr
 
     // 3 color components are 0-255 so no need to test them.
 
-    u64 wmiInputs[] = {
-            config_buf[0],
-            config_buf[1],
-            config_buf[2],
-            0,
-            config_buf[3] + 1,
-            config_buf[4],
-            config_buf[5],
-            config_buf[6],
-            0,
-            0, 0, 0, 0,
-            0, 0, 0, 0
+    u8 wmiInputs[] = {
+            config_buf[0], // Backlight mode
+            config_buf[1], // Speed
+            config_buf[2], // Brightness
+            0, // Unused/unknown
+            config_buf[3] + 1, // Direction
+            config_buf[4], // Red component
+            config_buf[5], // Green component
+            config_buf[6], // Blue component
+            0, // Unknown, was 3 when I used GetGamingKBBacklight on windows
+            255, // Unknown, should be > 0 or else nothing changes
+            0, 0, 0, 0, 0, 0 // Unknown/unused
     };
     struct acpi_buffer input = {(acpi_size) ACER_NITRO17_KBD_INTERNAL_CONFIG_LENGTH, (void *) (&wmiInputs)};
     struct acpi_buffer output = {ACPI_ALLOCATE_BUFFER, NULL};
@@ -217,12 +218,14 @@ static void __exit acer_nitro17_exit(void) {
     // Destroy fan character device
     dev_t dev = MKDEV(acer_nitro17_fan_major_number, 0);
     device_destroy(acer_nitro17_fan_cls, dev);
+    class_destroy(acer_nitro17_fan_cls);
     cdev_del(&acer_nitro17_fan_cdev);
     unregister_chrdev_region(dev, 1);
 
     // Destroy keyboard character device
     dev = MKDEV(acer_nitro17_kbd_major_number, 0);
     device_destroy(acer_nitro17_kbd_cls, dev);
+    class_destroy(acer_nitro17_kbd_cls);
     cdev_del(&acer_nitro17_kbd_cdev);
     unregister_chrdev_region(dev, 1);
 
