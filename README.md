@@ -12,6 +12,11 @@ and one for the fan.
 > **Warning**
 > ## This module has been developed specially for Acer Nitro 17 (model AN17-71). It has not been fully tested so use it at your own risk.
 
+#### Useless info
+The aim of the project was to learn to create a kernel module with character devices.
+Though the code seems to do the same thing as the module by @JafarAkhondali, I wanted to know
+where do values come from and that's why I did the reverse-engineering again by myself.
+
 ## Usage
 
 ### Fans
