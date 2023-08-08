@@ -2,7 +2,7 @@
 
 ## General information
 
-Inspired by [acer-predator-turbo-and-rbg-keyboard-linux-module](https://raw.githubusercontent.com/JafarAkhondali/acer-predator-turbo-and-rgb-keyboard-linux-module).
+Inspired by [acer-predator-turbo-and-rbg-keyboard-linux-module](https://github.com/JafarAkhondali/acer-predator-turbo-and-rgb-keyboard-linux-module).
 The project has been developed to have a simple and understandable code to control the
 RGB keyboard and fan turbo mode for the Acer Nitro 17 (AN17-71).
 
@@ -14,7 +14,7 @@ and one for the fan.
 
 #### Useless info
 The aim of the project was to learn to create a kernel module with character devices.
-Though the code seems to do the same thing as the module by @JafarAkhondali, I wanted to know
+Though the code seems to do the same thing as the module by [@JafarAkhondali](https://github.com/JafarAkhondali), I wanted to know
 where do values come from and that's why I did the reverse-engineering again by myself.
 
 ## Usage
