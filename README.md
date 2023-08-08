@@ -17,8 +17,8 @@ and one for the fan.
 ### Fans
 Fans can be only set to automatic and turbo mode.
 
-- To set the fans in turbo mode, write 0x01 or character '1' to ``/dev/acer-nitro17_fan``.
-- To set the fans in automatic mode, write 0x00 or character '0' to ``/dev/acer-nitro17_fan``.
+- To set the fans in turbo mode, write ``0x01`` or character ``1`` to ``/dev/acer-nitro17_fan``.
+- To set the fans in automatic mode, write ``0x00`` or character ``0`` to ``/dev/acer-nitro17_fan``.
 
 ### RGB Keyboard
 RGB Keyboard has more settings. Currently, area definitions are not supported.
@@ -26,20 +26,20 @@ RGB Keyboard has more settings. Currently, area definitions are not supported.
 The ``/dev/acer-nitro17_kbd`` accepts a 7 bytes length array which consists of :
 
 1. Backlight mode.
-    - 0x00 : Static mode.
-    - 0x01 : Breathing.
-    - 0x02 : Neon. Color info is not used.
-    - 0x03 : Wave. Color info is not used.
-    - 0x04 : Shifting.
-    - 0x05 : Zoom.
-    - 0x06 : Meteor.
-    - 0x07 : Twinkling.
-2. Speed. It can be from 1 to 9, where 1 is slowest and 9 fastest.
-However, if the mode is static (0x00), speed should be set to 0.
-3. Brightness. Lowest value is 0 (off) and highest is 100 (0x64).
-NitroSense allows only 0, 25, 50, 75 and 100. Middle values has not been tested yet.
-4. Direction. It is 1 for left-to-right and 2 for right-to-left. If the mode is
-static, the direction should be set to 0.
-5. Red component. Goes from 0 to 255.
-6. Green component. Goes from 0 to 255.
-7. Blue component. Goes from 0 to 255.
+    - ``0x00`` : Static mode.
+    - ``0x01`` : Breathing.
+    - ``0x02`` : Neon. Color info is not used.
+    - ``0x03`` : Wave. Color info is not used.
+    - ``0x04`` : Shifting.
+    - ``0x05`` : Zoom.
+    - ``0x06`` : Meteor.
+    - ``0x07`` : Twinkling.
+2. Speed. It can be from ``1`` to ``9``, where ``1`` is slowest and ``9`` fastest.
+However, if the mode is static (``0x00``), speed should be set to ``0``.
+3. Brightness. Lowest value is ``0`` (off) and highest is ``100`` (``0x64``).
+NitroSense allows only ``0``, ``25``, ``50``, ``75`` and ``100``. Middle values has not been tested yet.
+4. Direction. It is ``1`` for left-to-right and ``2`` for right-to-left. If the mode is
+static, the direction should be set to ``0``.
+5. Red component. Goes from ``0`` to ``255``.
+6. Green component. Goes from ``0`` to ``255``.
+7. Blue component. Goes from ``0`` to ``255``.
