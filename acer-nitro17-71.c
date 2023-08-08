@@ -57,10 +57,10 @@ static ssize_t acer_nitro17_fan_device_file_read(__attribute__((unused)) struct 
     return 0;
 }
 
-static ssize_t
-acer_nitro17_fan_device_file_write(__attribute__((unused)) struct file *file_ptr, const char *user_buffer, size_t count,
-                                   __attribute__((unused)) loff_t *offset) {
-    if (count != ACER_NITRO17_FAN_CONFIG_LENGTH) {
+static ssize_t acer_nitro17_fan_device_file_write(__attribute__((unused)) struct file *file_ptr,
+                                                  const char *user_buffer, size_t count,
+                                                  __attribute__((unused)) loff_t *offset) {
+    if (count != ACER_NITRO17_FAN_CONFIG_LENGTH && count != ACER_NITRO17_FAN_CONFIG_LENGTH + 1) {
         printk(KERN_ERR "%s: Invalid data written to fan character device!", DRIVER_NAME);
         return 0;
     }
@@ -72,7 +72,7 @@ acer_nitro17_fan_device_file_write(__attribute__((unused)) struct file *file_ptr
         return 0;
     }
 
-    u64 wmiInputs = get_fan_config(config_buf[0] == 1);
+    u64 wmiInputs = get_fan_config(config_buf[0] == 1 || config_buf[0] == '1');
     struct acpi_buffer input = {(acpi_size) sizeof(u64), (void *) (&wmiInputs)};
     struct acpi_buffer output = {ACPI_ALLOCATE_BUFFER, NULL};
     acpi_status status = wmi_evaluate_method(WMID_ACER_GUID, 0, WMI_SET_GAMING_FAN_BEHAVIOR_ID, &input, &output);
@@ -92,7 +92,8 @@ static ssize_t acer_nitro17_kdb_device_file_read(__attribute__((unused)) struct 
 }
 
 static ssize_t
-acer_nitro17_kbd_device_file_write(__attribute__((unused)) struct file *file_ptr, const char *user_buffer, size_t count,
+acer_nitro17_kbd_device_file_write(__attribute__((unused)) struct file *file_ptr,
+                                   const char *user_buffer, size_t count,
                                    __attribute__((unused)) loff_t *offset) {
     if (count != ACER_NITRO17_KBD_CONFIG_LENGTH) {
         printk(KERN_ERR "%s: Invalid data written to keyboard character device!", DRIVER_NAME);
