@@ -38,6 +38,16 @@ static u64 acer_nitro17_get_fan_config(bool isTurbo) {
     return gpu_fan_config2 | gpu_fan_config1 << 16;
 }
 
+static bool acer_nitro17_execute_wmi(u32 methodId, struct acpi_buffer input) {
+    struct acpi_buffer output = {ACPI_ALLOCATE_BUFFER, NULL};
+    acpi_status status = wmi_evaluate_method(WMID_ACER_GUID, 0, methodId, &input, &output);
+    if (ACPI_FAILURE(status)) {
+        printk(KERN_INFO "%s: acpi failure", DRIVER_NAME);
+        return false;
+    }
+    return true;
+}
+
 static int acer_nitro17_device_file_open(__attribute__((unused)) struct inode *file_ptr,
                                          __attribute__((unused)) struct file *user_buffer) {
     try_module_get(THIS_MODULE);
@@ -62,7 +72,7 @@ static ssize_t acer_nitro17_fan_device_file_write(__attribute__((unused)) struct
                                                   __attribute__((unused)) loff_t *offset) {
     if (count != ACER_NITRO17_FAN_CONFIG_LENGTH && count != ACER_NITRO17_FAN_CONFIG_LENGTH + 1) {
         printk(KERN_ERR "%s: Invalid data written to fan character device!", DRIVER_NAME);
-        return 0;
+        return count >= SSIZE_MAX ? SSIZE_MAX : (ssize_t)count;
     }
 
     u8 config_buf[ACER_NITRO17_FAN_CONFIG_LENGTH];
@@ -79,11 +89,8 @@ static ssize_t acer_nitro17_fan_device_file_write(__attribute__((unused)) struct
 
     u64 wmiInputs = acer_nitro17_get_fan_config(config_buf[0] == 1 || config_buf[0] == '1');
     struct acpi_buffer input = {(acpi_size) sizeof(u64), (void *) (&wmiInputs)};
-    struct acpi_buffer output = {ACPI_ALLOCATE_BUFFER, NULL};
-    acpi_status status = wmi_evaluate_method(WMID_ACER_GUID, 0, WMI_SET_GAMING_FAN_BEHAVIOR_ID, &input, &output);
-    if (ACPI_FAILURE(status)) {
-        printk(KERN_INFO "%s: acpi failure", DRIVER_NAME);
-        return 0;
+    if(!acer_nitro17_execute_wmi(WMI_SET_GAMING_FAN_BEHAVIOR_ID, input)) {
+        return ACER_NITRO17_FAN_CONFIG_LENGTH;
     }
 
     return ACER_NITRO17_FAN_CONFIG_LENGTH;
@@ -102,7 +109,7 @@ acer_nitro17_kbd_device_file_write(__attribute__((unused)) struct file *file_ptr
                                    __attribute__((unused)) loff_t *offset) {
     if (count != ACER_NITRO17_KBD_CONFIG_LENGTH) {
         printk(KERN_ERR "%s: Invalid data written to keyboard character device!", DRIVER_NAME);
-        return 0;
+        return count >= SSIZE_MAX ? SSIZE_MAX : (ssize_t)count;
     }
 
     u8 config_buf[ACER_NITRO17_KBD_CONFIG_LENGTH];
@@ -140,10 +147,32 @@ acer_nitro17_kbd_device_file_write(__attribute__((unused)) struct file *file_ptr
 
         if (config_buf[0] == 3 || config_buf[0] == 4) {
             // Direction 1-2. 1 is left-to-right and 2 is right-to-left.
-            if (config_buf[3] > 1) goto error;
+            if (config_buf[3] != 1 && config_buf[3] != 2) goto error;
         } else {
             // Direction should be 1.
             if (config_buf[3] != 1) goto error;
+        }
+    }
+
+    // Static mode might be configured by 4 zones, so color isn't used in this call
+    // To fix that, set a mode with wanted color and switch to static.
+    if(config_buf[0] == 0) {
+        u8 wmiInputs[] = {
+                7, // Backlight mode
+                1, // Speed
+                100, // Brightness
+                0, // Unused/unknown
+                1, // Direction
+                config_buf[4], // Red component
+                config_buf[5], // Green component
+                config_buf[6], // Blue component
+                0, // Unknown, was 3 when I used GetGamingKBBacklight on windows
+                255, // Unknown, should be > 0 or else nothing changes
+                0, 0, 0, 0, 0, 0 // Unknown/unused
+        };
+        struct acpi_buffer input = {(acpi_size) ACER_NITRO17_KBD_INTERNAL_CONFIG_LENGTH, (void *) (&wmiInputs)};
+        if(!acer_nitro17_execute_wmi(WMI_SET_GAMING_KBD_BACKLIGHT_ID, input)) {
+            return ACER_NITRO17_KBD_CONFIG_LENGTH;
         }
     }
 
@@ -154,7 +183,7 @@ acer_nitro17_kbd_device_file_write(__attribute__((unused)) struct file *file_ptr
             config_buf[1], // Speed
             config_buf[2], // Brightness
             0, // Unused/unknown
-            config_buf[3] + 1, // Direction
+            config_buf[3], // Direction
             config_buf[4], // Red component
             config_buf[5], // Green component
             config_buf[6], // Blue component
@@ -163,12 +192,8 @@ acer_nitro17_kbd_device_file_write(__attribute__((unused)) struct file *file_ptr
             0, 0, 0, 0, 0, 0 // Unknown/unused
     };
     struct acpi_buffer input = {(acpi_size) ACER_NITRO17_KBD_INTERNAL_CONFIG_LENGTH, (void *) (&wmiInputs)};
-    struct acpi_buffer output = {ACPI_ALLOCATE_BUFFER, NULL};
-    acpi_status status;
-    status = wmi_evaluate_method(WMID_ACER_GUID, 0, WMI_SET_GAMING_KBD_BACKLIGHT_ID, &input, &output);
-    if (ACPI_FAILURE(status)) {
-        printk(KERN_INFO "%s: acpi failure", DRIVER_NAME);
-        return 0;
+    if(!acer_nitro17_execute_wmi(WMI_SET_GAMING_KBD_BACKLIGHT_ID, input)) {
+        return ACER_NITRO17_KBD_CONFIG_LENGTH;
     }
 
     return ACER_NITRO17_KBD_CONFIG_LENGTH;

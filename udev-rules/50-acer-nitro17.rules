@@ -1,0 +1,1 @@
+KERNEL=="acer-nitro17_*", GROUP="acer-nitro17-driver"
