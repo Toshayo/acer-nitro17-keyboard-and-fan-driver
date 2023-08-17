@@ -20,10 +20,16 @@ where do values come from and that's why I did the reverse-engineering again by 
 ## Usage
 
 ### Fans
-Fans can be only set to automatic and turbo mode.
+Fans can be set to automatic, turbo and manual mode.
 
-- To set the fans in turbo mode, write ``0x01`` or character ``1`` to ``/dev/acer-nitro17_fan``.
-- To set the fans in automatic mode, write ``0x00`` or character ``0`` to ``/dev/acer-nitro17_fan``.
+The ``/dev/acer-nitro17_fan`` accepts a 3 bytes length array which consists of :
+
+1. Fan mode.
+   - ``0x00`` : automatic.
+   - ``0x01`` : turbo.
+   - ``0x02`` : manual.
+2. Fan index. Valid values are 0 or 1. Used only if in manual mode.
+3. Fan speed (in percents). Valid values are 0-100. Used only if in manual mode.
 
 ### RGB Keyboard
 RGB Keyboard has more settings. Currently, area definitions are not supported.
