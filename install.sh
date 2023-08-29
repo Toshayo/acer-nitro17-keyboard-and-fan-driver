@@ -36,6 +36,8 @@ if test $IS_REINSTALLING -eq 0; then
   groupadd acer-nitro17-driver
 fi
 
+depmod -a
+
 echo "Module installed."
 
 unset IS_REINSTALLING
