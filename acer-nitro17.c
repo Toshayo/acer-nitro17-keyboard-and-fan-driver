@@ -263,7 +263,7 @@ static int __init acer_nitro17_init(void) {
         cdev_init(&acer_nitro17_fan_cdev, &acer_nitro17_fan_driver_file_options);
 
         if (cdev_add(&acer_nitro17_fan_cdev, dev, 1) == 0) {
-            acer_nitro17_fan_cls = class_create(THIS_MODULE, "acer-nitro17_fan");
+            acer_nitro17_fan_cls = class_create("acer-nitro17_fan");
             device_create(acer_nitro17_fan_cls, NULL, dev, NULL, "acer-nitro17_fan");
         } else {
             printk(KERN_WARNING "%s: failed to add fan character device", DRIVER_NAME);
@@ -280,7 +280,7 @@ static int __init acer_nitro17_init(void) {
         cdev_init(&acer_nitro17_kbd_cdev, &acer_nitro17_kbd_driver_file_options);
 
         if (cdev_add(&acer_nitro17_kbd_cdev, dev, 1) == 0) {
-            acer_nitro17_kbd_cls = class_create(THIS_MODULE, "acer-nitro17_kbd");
+            acer_nitro17_kbd_cls = class_create("acer-nitro17_kbd");
             device_create(acer_nitro17_kbd_cls, NULL, dev, NULL, "acer-nitro17_kbd");
         } else {
             printk(KERN_WARNING "%s: failed to add keyboard character device", DRIVER_NAME);
