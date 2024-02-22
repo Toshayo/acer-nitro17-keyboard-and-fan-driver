@@ -1,0 +1,95 @@
+# Here is the breakdown of all required CI variables
+#   - GPG_KEY_FILE - public key for encrypting the archive
+#   - REPO_URL - URL of the repository manager (that will handle package info upload)
+#   - REPO_USER - Username for basic authentication of the repo
+#   - REPO_PASSWORD - Password for basic authentication of the repo
+#   - GGDRIVE_REPO_FOLDER_ID - Identifier of the folder where to store files
+#   - CLIENT_ID - Client id of the Google project
+#   - CLIENT_SECRET - Client secret of the Google project
+#   - REFRESH_TOKEN - Obtained with steps bellow \/
+#
+# The CI needs an OAuth token and a refresh token
+# To get them, follow these steps :
+# 1. Execute this command :
+#     curl -d "client_id=<client-id>&scope=https://www.googleapis.com/auth/drive.file" https://oauth2.googleapis.com/device/code
+#   Where <client-id> is the client id of the Google project
+# 2. Then follow the link given in "verification_url" and enter the "user_code" into the page input.
+# 3. After finishing the second step, execute this command :
+#     curl -d "client_id=<client-id>" -d "client_secret=<client-secret>" -d "device_code=<device-code>" -d "grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Adevice_code" https://accounts.google.com/o/oauth2/token
+#   Where <client-id> is the client id of the Google project
+#         <client-secret> is the client secret of the Google project
+#         <device-code> is the "device_code" received in step 1
+# 4. Save the "refresh_token" into REFRESH_TOKEN variable of the CI
+
+stages:
+  - build
+  - publish
+
+image: toshayo/ubuntu-with-stuff
+
+build-deb:
+  stage: build
+  variables:
+    PACKAGE_NAME: "acer-nitro17-driver"
+  script:
+    - ./config.sh
+    - mkdir -p ROOTFS/DEBIAN
+    # Copy control and script files and replace driver name and version placeholders.
+    - for WFILE in $(find DEBIAN -type f); do cat "$WFILE" | sed -e "s/@@@DRIVER_NAME@@@/$DRIVER_NAME/" | sed -e "s/@@@DRIVER_VERSION@@@/$DRIVER_VERSION/" > ROOTFS/"$WFILE"; done
+
+    - mkdir -p ROOTFS/usr/src
+    - cp -r src "ROOTFS/usr/src/$DRIVER_NAME"
+    - cat src/dkms.conf | sed -e "s/@@@DRIVER_NAME@@@/$DRIVER_NAME/" | sed -e "s/@@@DRIVER_VERSION@@@/$DRIVER_VERSION/" > ROOTFS/usr/src/"$DRIVER_NAME"/dkms.conf
+
+    - mkdir -p ROOTFS/etc/udev/rules.d
+    - cp udev-rules/* ROOTFS/etc/udev/rules.d/
+
+    # Set package installed size
+    - >-
+      echo "Installed-Size: $((($(du -sb ROOTFS/ | cut -f 1) + 1024) / 1024))" >> ROOTFS/DEBIAN/control
+
+    # Force file permissions
+    - find ROOTFS/ -type d -exec chmod 755 {} \;
+    - find ROOTFS/ -type f -exec chmod 644 {} \;
+    - chmod -R 755 ROOTFS/DEBIAN
+
+    - fakeroot dpkg-deb --build ./ROOTFS "${PACKAGE_NAME}_${CI_COMMIT_TAG:-${CI_COMMIT_SHORT_SHA}}.deb"
+  artifacts:
+    paths:
+      - ./*.deb
+    when: on_success
+    expire_in: 1 min
+
+publish-deb:
+  stage: publish
+  needs:
+    - build-deb
+  dependencies:
+    - build-deb
+  only:
+    - tags
+  script:
+    - DEB_PACKAGE=$(ls *.deb)
+    - gpg -e --recipient-file $GPG_KEY_FILE $DEB_PACKAGE
+    - >-
+      apt-ftparchive packages . | sed -e "s/Filename: \.\//Filename: packages\//" > pkg-info
+    - >-
+      curl -X POST
+      -u "${REPO_USER}:${REPO_PASSWORD}"
+      -F "file=@pkg-info;type=text/plain"
+      ${REPO_URL}
+    - FILENAME=$(sha256sum $DEB_PACKAGE | cut -d " " -f1)$(sha512sum $DEB_PACKAGE | cut -d " " -f1)
+    - >-
+      TOKEN=$(curl
+      -d "client_id=${CLIENT_ID}"
+      -d "client_secret=${CLIENT_SECRET}"
+      -d "refresh_token=${REFRESH_TOKEN}"
+      -d "grant_type=refresh_token"
+      https://accounts.google.com/o/oauth2/token | grep -Eo "\"access_token\": \".+?\"" | sed -e "s/\"access_token\": \"//")
+    - TOKEN=${TOKEN::-1}
+    - >-
+      curl -X POST -L
+      -H "Authorization: Bearer ${TOKEN}"
+      -F "metadata={name: '${FILENAME}',parents: ['${GGDRIVE_REPO_FOLDER_ID}']};type=application/json;charset=UTF-8"
+      -F "file=@${DEB_PACKAGE}.gpg;type=application/gpg-signature"
+      https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart

@@ -1,0 +1,15 @@
+#!/bin/bash
+
+declare DRIVER_NAME="@@@DRIVER_NAME@@@"
+declare DRIVER_VERSION="@@@DRIVER_VERSION@@@"
+
+if test "$1" == "configure"; then
+  /usr/lib/dkms/common.postinst $DRIVER_NAME $DRIVER_VERSION /usr/share/$DRIVER_NAME
+
+  groupadd acer-nitro17-driver
+fi
+
+unset DRIVER_NAME
+unset DRIVER_VERSION
+
+exit 0
