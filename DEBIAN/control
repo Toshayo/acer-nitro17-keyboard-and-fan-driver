@@ -1,8 +1,10 @@
 Package: acer-nitro17-driver
 Version: @@@DRIVER_VERSION@@@
 Section: kernel
+Priority: important
 Depends: dkms
 Architecture: all
 Maintainer: Toshayo
 Description: Acer Nitro 17 driver.
- This package provides a driver to control RGB keyboard and fans for Acer Nitro 17 (AN17-71).
+ This package provides a driver to control
+ RGB keyboard and fans for Acer Nitro 17 (AN17-71).

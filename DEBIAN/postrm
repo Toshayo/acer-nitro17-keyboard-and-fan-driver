@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e
+
 if test "$1" == "purge"; then
   groupdel acer-nitro17-driver
 fi
