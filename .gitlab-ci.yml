@@ -26,13 +26,14 @@ stages:
   - publish
 
 image: toshayo/ubuntu-with-stuff
+include: config.yml
 
 build-deb:
   stage: build
   variables:
     PACKAGE_NAME: "acer-nitro17-driver"
   script:
-    - ./config.sh
+    - echo "V ""$DRIVER_VERSION"
     - mkdir -p ROOTFS/DEBIAN
     # Copy control and script files and replace driver name and version placeholders.
     - for WFILE in $(find DEBIAN -type f); do cat "$WFILE" | sed -e "s/@@@DRIVER_NAME@@@/$DRIVER_NAME/" | sed -e "s/@@@DRIVER_VERSION@@@/$DRIVER_VERSION/" > ROOTFS/"$WFILE"; done
