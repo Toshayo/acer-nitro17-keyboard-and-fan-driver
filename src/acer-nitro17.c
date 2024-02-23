@@ -17,6 +17,10 @@
 MODULE_AUTHOR("Toshayo");
 MODULE_LICENSE("GPL");
 
+static int initial_color = 0xFF0000;
+module_param(initial_color, int, 0);
+MODULE_PARM_DESC(initial_color, "Initial keyboard color.");
+
 /**
  * Generates unsigned long config to pass to SetGamingFanBehavior.
  * @param fanMode - 1 if auto mode, 2 is turbo and 3 is manual.
@@ -63,6 +67,95 @@ static bool acer_nitro17_execute_wmi(u32 methodId, struct acpi_buffer input) {
     return true;
 }
 
+static bool acer_nitro17_set_keyboard_config(uint8_t backlight_mode, uint8_t brightness, uint8_t speed, uint8_t direction, uint32_t color) {
+    /* Mode 0-7.
+     * Here are mode descriptions:
+     *     0 - Static.     Speed is 0.  Direction is 0.  Color required.
+     *     1 - Breathing.  Speed 1-9.   Direction is 1.  Color required.
+     *     2 - Neon.       Speed 1-9.   Direction is 1.  No color.
+     *     3 - Wave.       Speed 1-9.   Direction 1-2.   No color.
+     *     4 - Shifting.   Speed 1-9.   Direction 1-2.   Color required.
+     *     5 - Zoom.       Speed 1-9.   Direction is 1.  Color required.
+     *     6 - Meteor.     Speed 1-9.   Direction is 1.  Color required.
+     *     7 - Twinkling.  Speed 1-9.   Direction is 1.  Color required.
+     */
+    if(backlight_mode > 7) {
+        return false;
+    }
+
+    // Brightness 0-100. 0 is off and 100 is max.
+    if(brightness > 100) {
+        return false;
+    }
+
+    if (backlight_mode == 0) {
+        // Speed is 0 when in static mode.
+        if (speed != 0) {
+            return false;
+        }
+
+        // Direction is 0 when in static mode
+        if (direction != 0) {
+            return false;
+        }
+    } else {
+        // Speed 1-9. 1 is slowest, 9 fastest.
+        if (speed < 1 || speed > 9) {
+            return false;
+        }
+
+        if (backlight_mode == 3 || backlight_mode == 4) {
+            // Direction 1-2. 1 is left-to-right and 2 is right-to-left.
+            if (direction != 1 && direction != 2) {
+                return false;
+            }
+        } else {
+            // Direction should be 1.
+            if (direction != 1) {
+                return false;
+            }
+        }
+    }
+
+    if(backlight_mode == 0) {
+        u8 wmiInputs[] = {
+                7, // Backlight mode
+                1, // Speed
+                1, // Brightness
+                0, // Unused/unknown
+                direction, // Direction
+                (color >> 16) & 0xFF, // Red component
+                (color >> 8) & 0xFF, // Green component
+                color & 0xFF, // Blue component
+                0, // Unknown, was 3 when I used GetGamingKBBacklight on windows
+                255, // Unknown, should be > 0 or else nothing changes
+                0, 0, 0, 0, 0, 0 // Unknown/unused
+        };
+        struct acpi_buffer input = {(acpi_size) ACER_NITRO17_KBD_INTERNAL_CONFIG_LENGTH, (void *) (&wmiInputs)};
+        if (!acer_nitro17_execute_wmi(WMI_SET_GAMING_KBD_BACKLIGHT_ID, input)) {
+            return false;
+        }
+    }
+    u8 wmiInputs[] = {
+            backlight_mode,
+            speed,
+            brightness,
+            0, // Unused/unknown
+            direction, // Direction
+            (color >> 16) & 0xFF, // Red component
+            (color >> 8) & 0xFF, // Green component
+            color & 0xFF, // Blue component
+            0, // Unknown, was 3 when I used GetGamingKBBacklight on windows
+            255, // Unknown, should be > 0 or else nothing changes
+            0, 0, 0, 0, 0, 0 // Unknown/unused
+    };
+    struct acpi_buffer input = {(acpi_size) ACER_NITRO17_KBD_INTERNAL_CONFIG_LENGTH, (void *) (&wmiInputs)};
+    if (!acer_nitro17_execute_wmi(WMI_SET_GAMING_KBD_BACKLIGHT_ID, input)) {
+        return false;
+    }
+    return true;
+}
+
 static int acer_nitro17_device_file_open(struct inode *file_ptr, struct file *user_buffer) {
     try_module_get(THIS_MODULE);
     return 0;
@@ -73,13 +166,11 @@ static int acer_nitro17_device_file_close(struct inode *file_ptr, struct file *u
     return 0;
 }
 
-static ssize_t
-acer_nitro17_fan_device_file_read(struct file *file_ptr, char __user *user_buffer, size_t count, loff_t *position) {
+static ssize_t acer_nitro17_fan_device_file_read(struct file *file_ptr, char __user *user_buffer, size_t count, loff_t *position) {
     return 0;
 }
 
-static ssize_t
-acer_nitro17_fan_device_file_write(struct file *file_ptr, const char *user_buffer, size_t count, loff_t *offset) {
+static ssize_t acer_nitro17_fan_device_file_write(struct file *file_ptr, const char *user_buffer, size_t count, loff_t *offset) {
     if (count != ACER_NITRO17_FAN_CONFIG_LENGTH) {
         printk(KERN_ERR "%s: Invalid data written to fan character device!", DRIVER_NAME);
         return count >= SSIZE_MAX ? SSIZE_MAX : (ssize_t) count;
@@ -127,13 +218,11 @@ acer_nitro17_fan_device_file_write(struct file *file_ptr, const char *user_buffe
     return ACER_NITRO17_FAN_CONFIG_LENGTH;
 }
 
-static ssize_t
-acer_nitro17_kdb_device_file_read(struct file *file_ptr, char __user *user_buffer, size_t count, loff_t *position) {
+static ssize_t acer_nitro17_kdb_device_file_read(struct file *file_ptr, char __user *user_buffer, size_t count, loff_t *position) {
     return 0;
 }
 
-static ssize_t
-acer_nitro17_kbd_device_file_write(struct file *file_ptr, const char *user_buffer, size_t count, loff_t *offset) {
+static ssize_t acer_nitro17_kbd_device_file_write(struct file *file_ptr, const char *user_buffer, size_t count, loff_t *offset) {
     if (count != ACER_NITRO17_KBD_CONFIG_LENGTH) {
         printk(KERN_ERR "%s: Invalid data written to keyboard character device!", DRIVER_NAME);
         return count >= SSIZE_MAX ? SSIZE_MAX : (ssize_t) count;
@@ -146,87 +235,10 @@ acer_nitro17_kbd_device_file_write(struct file *file_ptr, const char *user_buffe
         return 0;
     }
 
-    /* Mode 0-7.
-     * Here are mode descriptions:
-     *     0 - Static.     Speed is 0.  Direction is 0.  Color required.
-     *     1 - Breathing.  Speed 1-9.   Direction is 1.  Color required.
-     *     2 - Neon.       Speed 1-9.   Direction is 1.  No color.
-     *     3 - Wave.       Speed 1-9.   Direction 1-2.   No color.
-     *     4 - Shifting.   Speed 1-9.   Direction 1-2.   Color required.
-     *     5 - Zoom.       Speed 1-9.   Direction is 1.  Color required.
-     *     6 - Meteor.     Speed 1-9.   Direction is 1.  Color required.
-     *     7 - Twinkling.  Speed 1-9.   Direction is 1.  Color required.
-     */
-    if (config_buf[0] > 7) goto error;
-
-    // Brightness 0-100. 0 is off and 100 is max.
-    if (config_buf[2] > 100) goto error;
-
-    if (config_buf[0] == 0) {
-        // Speed is 0 when in static mode.
-        if (config_buf[1] != 0) goto error;
-
-        // Direction is 0 when in static mode
-        if (config_buf[3] != 0) goto error;
-    } else {
-        // Speed 1-9. 1 is slowest, 9 fastest.
-        if (config_buf[1] < 1 || config_buf[1] > 9) goto error;
-
-        if (config_buf[0] == 3 || config_buf[0] == 4) {
-            // Direction 1-2. 1 is left-to-right and 2 is right-to-left.
-            if (config_buf[3] != 1 && config_buf[3] != 2) goto error;
-        } else {
-            // Direction should be 1.
-            if (config_buf[3] != 1) goto error;
-        }
+    if(!acer_nitro17_set_keyboard_config(config_buf[0], config_buf[2], config_buf[1], config_buf[3], (config_buf[4] << 16) + (config_buf[5] << 8) + config_buf[6])) {
+        printk(KERN_ERR "%s: Invalid data written to keyboard character device!", DRIVER_NAME);
     }
 
-    // Static mode might be configured by 4 zones, so color isn't used in this call
-    // To fix that, set a mode with wanted color and switch to static.
-    if (config_buf[0] == 0) {
-        u8 wmiInputs[] = {
-                7, // Backlight mode
-                1, // Speed
-                100, // Brightness
-                0, // Unused/unknown
-                1, // Direction
-                config_buf[4], // Red component
-                config_buf[5], // Green component
-                config_buf[6], // Blue component
-                0, // Unknown, was 3 when I used GetGamingKBBacklight on windows
-                255, // Unknown, should be > 0 or else nothing changes
-                0, 0, 0, 0, 0, 0 // Unknown/unused
-        };
-        struct acpi_buffer input = {(acpi_size) ACER_NITRO17_KBD_INTERNAL_CONFIG_LENGTH, (void *) (&wmiInputs)};
-        if (!acer_nitro17_execute_wmi(WMI_SET_GAMING_KBD_BACKLIGHT_ID, input)) {
-            return ACER_NITRO17_KBD_CONFIG_LENGTH;
-        }
-    }
-
-    // 3 color components are 0-255 so no need to test them.
-
-    u8 wmiInputs[] = {
-            config_buf[0], // Backlight mode
-            config_buf[1], // Speed
-            config_buf[2], // Brightness
-            0, // Unused/unknown
-            config_buf[3], // Direction
-            config_buf[4], // Red component
-            config_buf[5], // Green component
-            config_buf[6], // Blue component
-            0, // Unknown, was 3 when I used GetGamingKBBacklight on windows
-            255, // Unknown, should be > 0 or else nothing changes
-            0, 0, 0, 0, 0, 0 // Unknown/unused
-    };
-    struct acpi_buffer input = {(acpi_size) ACER_NITRO17_KBD_INTERNAL_CONFIG_LENGTH, (void *) (&wmiInputs)};
-    if (!acer_nitro17_execute_wmi(WMI_SET_GAMING_KBD_BACKLIGHT_ID, input)) {
-        return ACER_NITRO17_KBD_CONFIG_LENGTH;
-    }
-
-    return ACER_NITRO17_KBD_CONFIG_LENGTH;
-
-    error:
-    printk(KERN_ERR "%s: Invalid data written to keyboard character device!", DRIVER_NAME);
     return ACER_NITRO17_KBD_CONFIG_LENGTH;
 }
 
