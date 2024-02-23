@@ -303,6 +303,8 @@ static int __init acer_nitro17_init(void) {
         return -1;
     }
 
+    acer_nitro17_set_keyboard_config(0, 100, 0, 0, initial_color);
+
     printk(KERN_INFO "%s: module loaded", DRIVER_NAME);
     return 0;
 }
