@@ -8,7 +8,10 @@ declare DRIVER_VERSION="@@@DRIVER_VERSION@@@"
 if test "$1" == "configure"; then
   /usr/lib/dkms/common.postinst $DRIVER_NAME $DRIVER_VERSION /usr/share/$DRIVER_NAME
 
-  groupadd acer-nitro17-driver
+  grep -q "acer-nitro17" /etc/group
+  if test $? -eq 1; then
+    groupadd acer-nitro17-driver
+  fi
 fi
 
 unset DRIVER_NAME
