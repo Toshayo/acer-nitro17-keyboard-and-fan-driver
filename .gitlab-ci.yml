@@ -45,7 +45,7 @@ build-deb:
     - cp udev-rules/* ROOTFS/lib/udev/rules.d/
 
     - mkdir -p ROOTFS/usr/lib/modules-load.d
-    - echo "acer-nitro17" > /usr/lib/modules-load.d/acer-nitro17.conf
+    - echo "acer-nitro17" > ROOTFS/usr/lib/modules-load.d/acer-nitro17.conf
 
     # Set package installed size
     - >-
