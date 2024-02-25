@@ -17,7 +17,7 @@
 MODULE_AUTHOR("Toshayo");
 MODULE_LICENSE("GPL");
 
-static int initial_color = 0xFF0000;
+static int initial_color = 0xFFFFFF;
 module_param(initial_color, int, 0);
 MODULE_PARM_DESC(initial_color, "Initial keyboard color.");
 
